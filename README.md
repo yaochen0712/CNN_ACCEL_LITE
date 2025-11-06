@@ -1,7 +1,8 @@
 # CNN_ACCEL_LITE
 
 **电子科技大学 2025年秋季学期 ASIC设计 大实验项目与作业**  
-Vivado 版本: <mark>2024.02<mark>
+Vivado 版本: <mark>2024.02 </mark>  
+FIFO，BRAM，Mulitplier均是Xilinx/AMD的IP
   
 ## 系统架构 
  
