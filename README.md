@@ -1,0 +1,2 @@
+# CNN_ACCEL_LITE
+电子科技大学2025年秋 ASIC设计课设
