@@ -43,4 +43,50 @@ graph TD
 |BIAS_BRAM_Controller|测试通过||
 |乘法器|等待完善|两边不同步的输入握手尚未测试|
 |缓存模块|测试通过||
-|累加器和缓存|测试不通过|累加器模块不工作|
+|累加器和缓存|通过|Vivado仿真疑似BUG|
+
+
+
+## Vivado 的奇怪行为
+对比下面两个代码块
+```
+// 代码1
+reg [CHANNEL_DATAWIDTH*CHANNEL_NUM-1:0] bias_buf;
+    wire [CHANNEL_DATAWIDTH*CHANNEL_NUM-1:0] w_bias_buf;
+    assign w_bias_buf = i_bias_in;
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n) begin
+            bias_buf <= {(CHANNEL_DATAWIDTH*CHANNEL_NUM){1'b0}};
+            o_bias_in_ready <= 1;
+        end
+        else if(bias_fire) begin
+            bias_buf <= w_bias_buf;
+            o_bias_in_ready <= 0;
+        end
+        else if(data_out_fire)begin
+            o_bias_in_ready <= 1;
+        end
+    end
+
+//代码2
+reg [CHANNEL_DATAWIDTH*CHANNEL_NUM-1:0] bias_buf;
+    wire [CHANNEL_DATAWIDTH*CHANNEL_NUM-1:0] w_bias_buf;
+    assign w_bias_buf = i_bias_in;
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n) begin
+            bias_buf <= {(CHANNEL_DATAWIDTH*CHANNEL_NUM){1'b0}};
+            o_bias_in_ready <= 1;
+        end
+        else if(bias_fire) begin
+            bias_buf <= i_bias_in;
+            o_bias_in_ready <= 0;
+        end
+        else if(data_out_fire)begin
+            o_bias_in_ready <= 1;
+        end
+    end
+
+```  
+代码1的能正常锁存但是代码2的不能锁存
+![alt text](<屏幕截图 2025-11-10 160839.png>)
+![alt text](<屏幕截图 2025-11-10 160936.png>)
