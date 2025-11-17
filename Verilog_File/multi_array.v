@@ -53,7 +53,7 @@ module multi_array
 
     //gating Control
     input i_cfg_valid,
-    input [GATE_PARA-1:0] i_gate_en
+    input [$clog2(GATE_PARA):0] i_gate_en
 );
     wire weight_fire;
     assign weight_fire =i_bram_weight_valid & o_bram_weight_ready;
@@ -66,10 +66,10 @@ module multi_array
     wire all_valid;
     assign all_valid = i_bram_data_valid & i_bram_weight_valid;
 
-    reg [GATE_PARA-1:0] gate_en_reg;
+    reg [$clog2(GATE_PARA):0] gate_en_reg;
     always @(posedge clk)begin
         if(i_cfg_valid)begin
-            gate_en_reg <= i_gate_en;
+            gate_en_reg <= i_gate_en ;
         end
     end
 
@@ -146,6 +146,8 @@ module multi_array
         end
     endgenerate
 
+
+    // 门控功能已移除，所有乘法器始终使能
     // ========== Multiplier array instantiation ==========
     generate
         for(n = 0; n < NUM_MULTS; n = n+1) begin : mult_inst
@@ -155,7 +157,7 @@ module multi_array
                 .A(data_in[n]),
                 .B(weight_in[n]),
                 .P(mult_out[n]),
-                .CE(gate_en_reg[n/(NUM_MULTS/GATE_PARA)]) // Gate control
+                .CE(1'b1) // 所有乘法器始终使能
             );
         end
     endgenerate

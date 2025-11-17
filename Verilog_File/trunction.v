@@ -29,7 +29,7 @@ module trunction
     input  wire i_dout_ready,
     
     // 配置接口
-    input wire [$clog2(DIN_WIDTH)-1:0] i_trunction_cfg_lsb_idx,
+    input wire [$clog2(DIN_WIDTH/DOUT_WIDTH):0] i_trunction_cfg_lsb_idx,
     input wire i_trunction_cfg_saturate_en,
     input wire i_trunction_cfg_en
 );
@@ -60,9 +60,10 @@ module trunction
         end
     end
     
-    // 握手信号：下游就绪优先，上游ready直接反映下游ready
+    // 握手信号：组合逻辑透传
     always @(*) begin
         o_din_ready = i_dout_ready;
+        o_dout_valid = i_din_valid;
     end
     
     // 截位和溢出检测（组合逻辑）
@@ -103,30 +104,18 @@ module trunction
         end
     end
     
-    // 数据输出寄存器（时序逻辑）
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            o_dout <= {DOUT_WIDTH{1'b0}};
-            o_dout_valid <= 1'b0;
-        end else begin
-            if (i_din_valid && o_din_ready) begin
-                // 握手成功，更新输出数据
-                if (saturate_en) begin
-                    if (pos_overflow) begin
-                        o_dout <= MAX_POS;  // 饱和到最大正数
-                    end else if (neg_overflow) begin
-                        o_dout <= MAX_NEG;  // 饱和到最小负数
-                    end else begin
-                        o_dout <= truncated_data;  // 正常截位
-                    end
-                end else begin
-                    o_dout <= truncated_data;  // 不启用饱和，直接截位
-                end
-                o_dout_valid <= 1'b1;
-            end else if (i_dout_ready) begin
-                // 下游接收数据，清除valid
-                o_dout_valid <= 1'b0;
+    // 数据输出组合逻辑
+    always @(*) begin
+        if (saturate_en) begin
+            if (pos_overflow) begin
+                o_dout = MAX_POS;  // 饱和到最大正数
+            end else if (neg_overflow) begin
+                o_dout = MAX_NEG;  // 饱和到最小负数
+            end else begin
+                o_dout = truncated_data;  // 正常截位
             end
+        end else begin
+            o_dout = truncated_data;  // 不启用饱和，直接截位
         end
     end
 
