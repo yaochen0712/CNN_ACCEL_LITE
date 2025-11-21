@@ -54,12 +54,16 @@ module Control
     output  o_trunction_cfg_en,
     output  [$clog2(ACCUMULATOR_OUTWIDTH-D_WIDTH)-1:0] o_trunction_cfg_lsb_idx,
     output  o_trunction_cfg_saturate_en,
-    output  o_relu_en
+    output  o_relu_en,
+
+    output o_n_bram_setaddr_zero
     );
 
     reg [$clog2(MAX_LAYER)-1:0] layer_count;//类似于PC
+    reg [3:0] reconfig_counter;
+    localparam RECONFIG_PERIOD = 4;//重新配置周期 
     reg [2:0] state,next_state,prev_state;
-    localparam RST = 3'd0,FETCH =3'd1, ASIC_CONFIG =3'd2, WAIT_DONE=3'd3, FINISH=3'd4 , ERROR = 3'd5;
+    localparam RST = 3'd0,FETCH =3'd1, ASIC_CONFIG =3'd2, WAIT_DONE=3'd3, FINISH=3'd4 , ERROR = 3'd5, RECFG= 3'd6;
     
     wire fetch_fire;
     assign fetch_fire = i_command_valid & o_command_ready;
@@ -143,6 +147,42 @@ module Control
         end
     end
 
+    //一层计算完成后的重新配置处理
+    always @(posedge clk or negedge rst_n)begin
+        if(!rst_n)begin
+            reconfig_counter <= RECONFIG_PERIOD;
+        end
+        else begin
+            if(state == RECFG)begin
+                reconfig_counter <= (reconfig_counter != 0) ? reconfig_counter - 1 : 0;
+            end
+            else begin
+                reconfig_counter <= RECONFIG_PERIOD;
+            end
+        end
+    end
+
+    reg reg_rstn_ctrl;
+    reg [1:0] rstn_ctrl_counter;
+    localparam RSTN_CTRL_PERIOD = 2;//rstn_ctrl拉低周期
+    assign o_n_bram_setaddr_zero = reg_rstn_ctrl;
+    always @(posedge clk or negedge rst_n)begin
+        if(!rst_n)begin
+            reg_rstn_ctrl <= 1;
+            rstn_ctrl_counter <= RSTN_CTRL_PERIOD;
+        end
+        else begin
+            if(state == RECFG)begin
+                reg_rstn_ctrl <= (rstn_ctrl_counter != 0) ? 0 : 1;
+                rstn_ctrl_counter <= (rstn_ctrl_counter == 0) ? 0 : rstn_ctrl_counter - 1;
+            end
+            else begin
+                reg_rstn_ctrl <= 1;
+                rstn_ctrl_counter <= RSTN_CTRL_PERIOD;
+            end
+        end
+    end
+
 
     //状态转移
     always @(posedge clk or negedge rst_n) begin
@@ -161,7 +201,9 @@ module Control
             FETCH:next_state = (fetch_fire) ? ASIC_CONFIG : FETCH;
             ASIC_CONFIG: next_state = (cfg_p_cnt >= CONFIG_PEROID) ? WAIT_DONE : ASIC_CONFIG;
             WAIT_DONE:next_state = (i_layer_done) ? ((layer_tag == 2'b11) ? FINISH : FETCH) : WAIT_DONE;
-            FINISH:next_state = FINISH;
+            FINISH:next_state = RECFG;
+            RECFG:next_state = (reconfig_counter == 0) ? FETCH : RECFG;
+            ERROR:next_state = ERROR;
         endcase
         if(i_layer_error)begin
             next_state <= ERROR;

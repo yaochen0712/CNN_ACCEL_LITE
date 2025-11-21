@@ -50,7 +50,8 @@ module top_fc_module
     input i_trunction_cfg_en,
     input [$clog2(ACCUMULATOR_OUTWIDTH-D_WIDTH)-1:0] i_trunction_cfg_lsb_index,
     input i_trunction_cfg_saturate_en,
-    input i_relu_en
+    input i_relu_en,
+    input i_n_bram_setaddr_zero //用于把控制器重置为0开始 方便下一次计算 正常使用的时候拉高 实现方法是和rst_n做and
     );
 
     //这里是权重模块和片选择
@@ -144,15 +145,25 @@ module top_fc_module
     u_BM_CTRL_L1_WEIGHT
     (
         .clk(clk),
-        .rst_n(rst_n),
+        .rst_n((rst_n & i_n_bram_setaddr_zero)),
         .en(i_ctrl_start),
         .o_addr_done(w_l1_bram_done),
         .i_bram_data(w_l1_weight_brctrl_data),
-        .i_bram_addr(w_l1_weight_brctrl_addr),
+        .o_bram_addr(w_l1_weight_brctrl_addr),
         .o_data_out(w_weight_l1_data),
         .o_data_out_valid(w_weight_l1_valid),
         .i_data_out_ready(w_weight_l1_ready)
     );
+    l1_weight u_bram_l1_weight
+    (
+        .clka(clk), // input clka
+        .rsta(~rst_n), // input rsta
+        .wea(1'b0), // input [0 : 0] wea
+        .addra(w_l1_weight_brctrl_addr), // input [8 : 0] addra
+        .dina({WEIGHT_LAYER1_DWIDTH{1'b0}}), // input [127 : 0] dina
+        .douta(w_l1_weight_brctrl_data) // output [127 : 0] douta
+    );
+
 
     //这些wire信号是给BRAM的接口信号
     wire [WEIGHT_LAYER2_DWIDTH-1:0] w_l2_weight_brctrl_data;
@@ -166,14 +177,23 @@ module top_fc_module
     u_BM_CTRL_L2_WEIGHT
     (
         .clk(clk),
-        .rst_n(rst_n),
+        .rst_n((rst_n & i_n_bram_setaddr_zero)),
         .en(i_ctrl_start),
         .o_addr_done(w_l2_bram_done),
         .i_bram_data(w_l2_weight_brctrl_data),
-        .i_bram_addr(w_l2_weight_brctrl_addr),
+        .o_bram_addr(w_l2_weight_brctrl_addr),
         .o_data_out(w_weight_l2_data),
         .o_data_out_valid(w_weight_l2_valid),
         .i_data_out_ready(w_weight_l2_ready)
+    );
+    l2_weight u_bram_l2_weight
+    (
+        .clka(clk), // input clka
+        .rsta(~rst_n), // input rsta
+        .wea(1'b0), // input [0 : 0] wea
+        .addra(w_l2_weight_brctrl_addr), // input [6 : 0] addra
+        .dina({WEIGHT_LAYER2_DWIDTH{1'b0}}), // input [255 : 0] dina
+        .douta(w_l2_weight_brctrl_data) // output [255 : 0] douta
     );
 
     //这些wire信号是给BRAM的接口信号
@@ -188,16 +208,24 @@ module top_fc_module
     u_BM_CTRL_L3_WEIGHT
     (
         .clk(clk),
-        .rst_n(rst_n),
+        .rst_n((rst_n & i_n_bram_setaddr_zero)),
         .en(i_ctrl_start),
         .o_addr_done(w_l3_bram_done), 
         .i_bram_data(w_l3_weight_brctrl_data),
-        .i_bram_addr(w_l3_weight_brctrl_addr),
+        .o_bram_addr(w_l3_weight_brctrl_addr),
         .o_data_out(w_weight_l3_data),
         .o_data_out_valid(w_weight_l3_valid),
         .i_data_out_ready(w_weight_l3_ready)
     );
-
+    l3_weight u_bram_l3_weight
+    (
+        .clka(clk), // input clka
+        .rsta(~rst_n), // input rsta
+        .wea(1'b0), // input [0 : 0] wea
+        .addra(w_l3_weight_brctrl_addr), // input [4 : 0] addra
+        .dina({WEIGHT_LAYER3_DWIDTH{1'b0}}), // input [15 : 0] dina
+        .douta(w_l3_weight_brctrl_data) // output [15 : 0] douta
+    );
     //todo:把BRAM的数据顺序确定好后直接例化连接
 
     //DP-MUX
@@ -271,7 +299,7 @@ module top_fc_module
         )
     u_BM_control_stream_v2(
         .clk              	(clk               ),
-        .rst_n            	(rst_n             ),
+        .rst_n            	((rst_n & i_n_bram_setaddr_zero)             ),
         .en               	(i_ctrl_start                ),
         .o_addr_done      	(w_bias_bram_done       ),
         .i_bram_data      	(w_bias_bram_bmctrl_data       ),
@@ -280,7 +308,15 @@ module top_fc_module
         .o_data_out_valid 	(w_bmctrl_accum_valid  ),
         .i_data_out_ready 	(w_bmctrl_accum_ready  )
     );
-    
+    bias_mem u_bias_mem
+    (
+        .clka(clk), // input clka
+        .rsta(~rst_n), // input rsta
+        .wea(1'b0), // input [0 : 0] wea
+        .addra(w_bias_bram_bmctrl_addr), // input [1 : 0] addra
+        .dina({D_WIDTH*MAX_OUTPUT_LAYER{1'b0}}), // input [1023 : 0] dina
+        .douta(w_bias_bram_bmctrl_data) // output [1023 : 0] douta
+    );
 
     wire [ACCUMULATOR_OUTWIDTH*MULTI_WIDTH-1:0] w_accum_trunc_data;
     wire w_accum_trunc_valid;

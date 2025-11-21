@@ -12,9 +12,9 @@ module Accumulator
     input rst_n,
 
     input [COUNT_WIDTH-1:0] i_count_limit,//累加次数
-    input [GATE_PARA-1:0] i_cfg_gate_en,     // 门控使能配置
+    input [$clog2(GATE_PARA):0] i_cfg_gate_en,     // 门控使能配置
     input i_accumulator_cfg_en,//配置更新用
-
+    
     //数据接口
     input [MULTIOUT_DWIDTH*CHANNEL_NUM-1:0] i_data_in,
     input i_data_in_valid,
@@ -35,12 +35,23 @@ module Accumulator
     assign data_out_fire = o_data_out_valid & i_data_out_ready;
     assign bias_fire = i_bias_in_valid & o_bias_in_ready;
 
-    reg [GATE_PARA-1:0] gate_en_reg;        // 门控配置寄存器
+    reg [$clog2(GATE_PARA):0] gate_en_reg;        // 门控配置寄存器
     reg [COUNT_WIDTH-1:0] count_limit_reg;  //累加次数寄存器
-    always @(posedge clk)begin
-        if(i_accumulator_cfg_en)begin
+    reg config_received;  // 配置接收标志
+    
+    always @(posedge clk or negedge rst_n)begin
+        if(!rst_n)begin
+            gate_en_reg <= 0;
+            count_limit_reg <= 0;
+            config_received <= 0;
+        end
+        else if(i_accumulator_cfg_en)begin
             gate_en_reg <= i_cfg_gate_en;
             count_limit_reg <= i_count_limit;
+            config_received <= 1;  // 标记配置已接收
+        end
+        else if(data_in_fire && counter == count_limit_reg - 1)begin
+            config_received <= 0;  // 累加完成后清除配置标志
         end
     end
 
@@ -152,9 +163,28 @@ module Accumulator
         end
     endgenerate
 
-    // 输出数据连接
-        // 输出连接
-    assign o_data_out = data_with_bias;
+    //输出
+    //锁存部分
+    reg count_done_delay;//延迟一拍
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n) begin
+            count_done_delay <= 0;
+        end
+        else begin
+            count_done_delay <= count_done;
+        end
+    end
+    reg [D_WIDTH*CHANNEL_NUM-1:0] data_out_reg;
+    assign o_data_out = data_out_reg;
+    always @(posedge count_done_delay or negedge rst_n) begin
+        if(!rst_n) begin
+            data_out_reg <= 0;
+        end
+        else if(count_done_delay) begin
+            data_out_reg <= data_with_bias;
+        end
+    end
+
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin
             o_data_out_valid <= 0;
@@ -167,19 +197,27 @@ module Accumulator
         end
     end
 
-    //上游dataready逻辑
+    //上游dataready逻辑 - 合理的反压控制
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin
-            o_data_in_ready <= 1;
+            o_data_in_ready <= 0;  // 复位后ready为0，等待配置
         end
-        else if(data_in_fire) begin
-            //这次累加接近满了但是有一个输出还在等待下游
-            if((counter >= count_limit_reg -2) & o_data_out_valid) begin
-                o_data_in_ready <= 0;
+        else if(i_accumulator_cfg_en) begin
+            // 配置时，如果有未取走的输出则保持ready为0，否则拉高
+            if(o_data_out_valid) begin
+                o_data_in_ready <= 0;  // 有未取走的结果，等待下游取走
+            end else begin
+                o_data_in_ready <= 1;  // 可以开始新的累加
             end
         end
         else if(data_out_fire) begin
-            o_data_in_ready <= 1;
+            // 输出被取走后，如果已配置且不是刚累加完成，则拉高ready
+            if(config_received && !count_done) begin
+                o_data_in_ready <= 1;
+            end
+        end
+        else if(data_in_fire && counter == count_limit_reg - 1) begin
+            o_data_in_ready <= 0;  // 累加完成后拉低ready，等待输出被取走
         end
     end
 endmodule

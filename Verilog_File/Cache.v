@@ -22,7 +22,7 @@ module Cache
     input wire rst_n,
 
     // 配置接口
-    input wire [GATE_PARA-1:0] i_cfg_gate_en,     // 门控使能配置
+    input wire [$clog2(GATE_PARA):0] i_cfg_gate_en,     // 门控使能配置
     input wire i_cfg_valid,                        // 配置有效信号
     
     // 上游并行数据接口
@@ -45,7 +45,7 @@ module Cache
     
     reg [CNT_WIDTH-1:0] count_max;          // 最大计数值（有效通道数）
     reg [CNT_WIDTH-1:0] counter;            // 当前输出计数器
-    reg [GATE_PARA-1:0] gate_en_reg;        // 门控配置寄存器
+    reg [$clog2(GATE_PARA):0] gate_en_reg;        // 门控配置寄存器
     reg [D_WIDTH*CHANNEL-1:0] mem_array;    // 数据存储器
 
     // 状态机
@@ -61,7 +61,7 @@ module Cache
     // ========== 配置更新逻辑 ==========
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            gate_en_reg <= {GATE_PARA{1'b0}};
+            gate_en_reg <= {($clog2(GATE_PARA)+1){1'b0}};
         end else if (i_cfg_valid) begin
             gate_en_reg <= i_cfg_gate_en;
         end
