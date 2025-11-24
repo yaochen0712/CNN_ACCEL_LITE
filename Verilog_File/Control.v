@@ -55,20 +55,43 @@ module Control
     output  [$clog2(ACCUMULATOR_OUTWIDTH-D_WIDTH)-1:0] o_trunction_cfg_lsb_idx,
     output  o_trunction_cfg_saturate_en,
     output  o_relu_en,
+    output  o_model_finished,
 
-    output o_n_bram_setaddr_zero
+    output o_n_bram_setaddr_zero,
+
+    //监听端口
+    wire i_out_cache_ready,
+    wire i_out_cache_valid,
+    output o_out_mux_sel //1的时候这时候输出
+
     );
 
     reg [$clog2(MAX_LAYER)-1:0] layer_count;//类似于PC
     reg [3:0] reconfig_counter;
     localparam RECONFIG_PERIOD = 4;//重新配置周期 
     reg [2:0] state,next_state,prev_state;
-    localparam RST = 3'd0,FETCH =3'd1, ASIC_CONFIG =3'd2, WAIT_DONE=3'd3, FINISH=3'd4 , ERROR = 3'd5, RECFG= 3'd6;
-    
+    localparam RST = 3'd0,FETCH =3'd1, ASIC_CONFIG =3'd2, WAIT_DONE=3'd3, FINISH=3'd4 , ERROR = 3'd5, RECFG= 3'd6, CAPTURE=3'd7;
+    //ASIC_CFG 层内配置 RECFG 模型重新换样本
+    reg reg_model_finish;
+    assign o_model_finished = reg_model_finish;
+
+
     wire fetch_fire;
     assign fetch_fire = i_command_valid & o_command_ready;
     reg o_reg_command_ready;
     assign o_command_ready = o_reg_command_ready;
+    reg reg_out_mux_sel;
+    assign o_out_mux_sel = reg_out_mux_sel;
+    assign out_fired = i_out_cache_ready & i_out_cache_valid;
+    //
+    always @(posedge clk)begin
+        if(state == RECFG)begin
+            reg_out_mux_sel = 1;
+        end 
+        else begin 
+            reg_out_mux_sel = 0;
+        end
+    end
     //o_command_ready
     always @(posedge clk or negedge rst_n)begin
         if(!rst_n)begin
@@ -93,7 +116,7 @@ module Control
             layer_count <= 0;
         end
         else begin
-            if(prev_state == WAIT_DONE & ((state == FETCH) | (state == FINISH)))begin
+            if( (((prev_state == WAIT_DONE) & (state == FETCH)) | ((prev_state == WAIT_DONE) & (state == FINISH))))begin
                 layer_count <= layer_count + 1;
             end
         end
@@ -104,7 +127,7 @@ module Control
     reg [3:0] layer_innum;
     reg [3:0] layer_outnum;
     reg relu_en;
-    reg [2:0] lsb_trunc_pos;
+    reg [3:0] lsb_trunc_pos;
     reg trunc_en;
     assign o_dp_sel = (layer_tag==2'b00);
     assign o_layer_idx = layer_count;
@@ -119,8 +142,8 @@ module Control
             layer_innum <= command_latch[5:2];
             layer_outnum <= command_latch[9:6];
             relu_en <= command_latch[10];
-            lsb_trunc_pos <= command_latch[13:11];
-            trunc_en <= command_latch[14];
+            lsb_trunc_pos <= command_latch[14:11];
+            trunc_en <= command_latch[15];
         end
     end
 
@@ -201,7 +224,8 @@ module Control
             FETCH:next_state = (fetch_fire) ? ASIC_CONFIG : FETCH;
             ASIC_CONFIG: next_state = (cfg_p_cnt >= CONFIG_PEROID) ? WAIT_DONE : ASIC_CONFIG;
             WAIT_DONE:next_state = (i_layer_done) ? ((layer_tag == 2'b11) ? FINISH : FETCH) : WAIT_DONE;
-            FINISH:next_state = RECFG;
+            FINISH:next_state = (reg_model_finish) ? CAPTURE : FINISH;
+            CAPTURE:next_state = (out_fired) ? RECFG : CAPTURE;
             RECFG:next_state = (reconfig_counter == 0) ? FETCH : RECFG;
             ERROR:next_state = ERROR;
         endcase
@@ -229,4 +253,13 @@ module Control
         reg_o_soc_error <= (state == ERROR);
     end
     
+
+    always @(posedge clk)begin
+        if(state == FINISH)begin
+            reg_model_finish <= 1;
+        end
+        else begin
+            reg_model_finish <= 0;
+        end
+    end
 endmodule

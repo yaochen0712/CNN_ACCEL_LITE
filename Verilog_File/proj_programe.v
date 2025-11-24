@@ -14,7 +14,7 @@ module proj_programe(
     output [15:0] o_command_data
     );
     localparam PROG_LENGTH = 3;
-    reg [16*3-1:0] command_memory
+    reg [0:16*3-1] command_memory
     = {
         16'b1_1010_1_0111_1001_00, //00_1_010_0111_1001_00
         16'b1_1000_1_0101_0111_10, //layer 1 start
