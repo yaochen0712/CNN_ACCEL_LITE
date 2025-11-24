@@ -397,5 +397,23 @@ module top_fc_module
     );
     
 
+    //layer_done逻辑
+    reg reg_layer_done = 0;
+    assign o_fc_layerdone = reg_layer_done;
+    localparam layerdone_high_period = 4;
+    reg [3:0] counter_layerdone = 0;
+    always @(posedge clk or posedge o_mem_full)begin
+        counter_layerdone <= (counter_layerdone == 0) ? 0 : (counter_layerdone - 1);
+        if(o_mem_full == 1)begin
+            counter_layerdone <= layerdone_high_period;
+        end
+    end
+    always @(posedge clk)begin
+        if(o_mem_full == 1)begin
+            reg_layer_done =(counter_layerdone == 0) ? 0 : 1;
+        end
+        
+    end
+
 
 endmodule
