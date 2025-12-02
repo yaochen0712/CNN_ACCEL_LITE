@@ -1,0 +1,14 @@
+0.7
+2020.2
+Nov  8 2024
+22:36:57
+C:/Users/dyf31/Desktop/DYF/ASIC/8Bit/8Bit.sim/sim_1/behav/xsim/glbl.v,1724786425,verilog,,,,glbl,,,,,,,,
+C:/Users/dyf31/Desktop/DYF/ASIC/8Bit/8Bit.srcs/sim_1/new/tb_Cache.v,1763460209,verilog,,,,tb_Cache,,,,,,,,
+C:/Users/dyf31/Desktop/DYF/ASIC/8Bit/8Bit.srcs/sim_1/new/tb_accumulator.v,1763459689,verilog,,,,tb_accumulator,,,,,,,,
+C:/Users/dyf31/Desktop/DYF/ASIC/8Bit/8Bit.srcs/sim_1/new/tb_ctrl_top.v,1764690096,verilog,,,,tb_ctrl_top,,,,,,,,
+C:/Users/dyf31/Desktop/DYF/ASIC/8Bit/8Bit.srcs/sim_1/new/tb_proj_programmer.v,1763971868,verilog,,,,tb_proj_programmer,,,,,,,,
+C:/Users/dyf31/Desktop/DYF/ASIC/8Bit/8Bit.srcs/sources_1/new/Accumulator.v,1763459629,verilog,,C:/Users/dyf31/Desktop/DYF/ASIC/8Bit/8Bit.srcs/sources_1/new/Accumulator_unit.v,,Accumulator,,,,,,,,
+C:/Users/dyf31/Desktop/DYF/ASIC/8Bit/8Bit.srcs/sources_1/new/Accumulator_unit.v,1762761253,verilog,,C:/Users/dyf31/Desktop/DYF/ASIC/8Bit/8Bit.srcs/sim_1/new/tb_accumulator.v,,Accumulator_unit,,,,,,,,
+C:/Users/dyf31/Desktop/DYF/ASIC/8Bit/8Bit.srcs/sources_1/new/Cache.v,1763364890,verilog,,C:/Users/dyf31/Desktop/DYF/ASIC/8Bit/8Bit.srcs/sim_1/new/tb_Cache.v,,Cache,,,,,,,,
+C:/Users/dyf31/Desktop/DYF/ASIC/8Bit/8Bit.srcs/sources_1/new/Control.v,1764690052,verilog,,C:/Users/dyf31/Desktop/DYF/ASIC/8Bit/8Bit.srcs/sources_1/new/proj_programe.v,,Control,,,,,,,,
+C:/Users/dyf31/Desktop/DYF/ASIC/8Bit/8Bit.srcs/sources_1/new/proj_programe.v,1763975383,verilog,,C:/Users/dyf31/Desktop/DYF/ASIC/8Bit/8Bit.srcs/sim_1/new/tb_ctrl_top.v,,proj_programe,,,,,,,,

@@ -9,17 +9,20 @@ FIFO，BRAM，Mulitplier均是Xilinx/AMD的IP
 ```mermaid
 graph TD
     A[Data from ps/FIFO] --> |8Bit| B[CHANNEL DATA MUX]
-    C[Memory Cache] --> |8Bit| B
+    C[Memory Cache] --> |8bit| K[CAP_MUX]
+    K --> |8Bit| B
+    K --> |BUS| L[CONNECT TO DMA]
     B --> |8Bit| D[Parral Multiplier]
     D --> |16Bit * 128| E[Accumulator and Bias-adding]
     H[WEIGHT_BRAM_Controler] -->|8Bit * 128| D
     F[BIAS_BRAM_Controller] -->|8Bit * 128| E
     E --> |128 * 24bit| G[ReLu and Truncation]
     G --> |8Bit * 128| C
-    G --> I[FeatureMap-Show]
+    G --> I[FeatureMap-Show-optional]
     J[**Controller**] -.-> |Switch|B
     J -.-> |Channel_En|D
     J -.-> |Accumulate-Times| E
+    J -.-> L
     J -.-> |ReLu-en and Truncation LSB|G
     E -.-> |layer_done|J
 ```  
