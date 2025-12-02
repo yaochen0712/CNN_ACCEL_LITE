@@ -18,13 +18,7 @@ graph TD
     F[BIAS_BRAM_Controller] -->|8Bit * 128| E
     E --> |128 * 24bit| G[ReLu and Truncation]
     G --> |8Bit * 128| C
-    G --> I[FeatureMap-Show-optional]
-    J[**Controller**] -.-> |Switch|B
-    J -.-> |Channel_En|D
-    J -.-> |Accumulate-Times| E
-    J -.-> L
-    J -.-> |ReLu-en and Truncation LSB|G
-    E -.-> |layer_done|J
+
 ```  
 
 
