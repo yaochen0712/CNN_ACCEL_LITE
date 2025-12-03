@@ -82,8 +82,9 @@ module tb_ctrl_top(
         .o_relu_en                       	(o_relu_en                        ),
         .o_model_finished                   (model_finish                   ),
         .o_n_bram_setaddr_zero           	(o_n_bram_setaddr_zero            ),
-        .i_out_cache_ready                  (1'b0),
-        .i_out_cache_valid                  (1'b1)
+        .i_out_cache_ready                  (1'b1),
+        .i_out_cache_valid                  (1'b1),
+        .o_out_mux_sel                      (w_out_mux_sel)
     );
     
     

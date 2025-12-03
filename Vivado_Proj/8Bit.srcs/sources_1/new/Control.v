@@ -62,7 +62,11 @@ module Control
     //监听端口
     input i_out_cache_ready,
     input i_out_cache_valid,
-    output o_out_mux_sel //1的时候这时候输出
+    output o_out_mux_sel, //1的时候这时候输出
+
+    //监听数据输入端口
+    input i_din_ready,
+    input i_din_valid
 
     );
 
