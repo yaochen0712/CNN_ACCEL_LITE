@@ -29,7 +29,7 @@ module trunction
     input  wire i_dout_ready,
     
     // 配置接口
-    input wire [$clog2(DIN_WIDTH/DOUT_WIDTH):0] i_trunction_cfg_lsb_idx,
+    input wire [$clog2(DIN_WIDTH-DOUT_WIDTH):0] i_trunction_cfg_lsb_idx,
     input wire i_trunction_cfg_saturate_en,
     input wire i_trunction_cfg_en
 );

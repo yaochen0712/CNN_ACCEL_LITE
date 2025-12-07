@@ -39,7 +39,7 @@ module Accumulator
     reg [COUNT_WIDTH-1:0] count_limit_reg;  //累加次数寄存器
     reg config_received;  // 配置接收标志
     
-    reg [COUNT_WIDTH:0] counter;
+    reg [15:0] counter;
     reg count_done;
 
     always @(posedge clk or negedge rst_n)begin
@@ -53,7 +53,7 @@ module Accumulator
             count_limit_reg <= i_count_limit;
             config_received <= 1;  // 标记配置已接收
         end
-        else if(data_in_fire && (counter == count_limit_reg - 1))begin
+        else if(data_in_fire && (counter == (1 << count_limit_reg) - 1))begin
             config_received <= 0;  // 累加完成后清除配置标志
         end
     end
@@ -87,7 +87,7 @@ module Accumulator
 
             // 正常累加
             if(data_in_fire)begin
-                if(counter == count_limit_reg - 1)begin
+                if(counter == (1 << count_limit_reg) - 1)begin
                     // 这次握手后刚好达到限制，置done信号
                     counter <= 0;  // 同时清零计数器（为下一轮准备）
                     count_done <= 1;
@@ -217,7 +217,7 @@ module Accumulator
                 o_data_in_ready <= 1;
             end
         end
-        else if(data_in_fire && counter == count_limit_reg - 1) begin
+        else if(data_in_fire && counter == (1 << count_limit_reg) - 1) begin
             o_data_in_ready <= 0;  // 累加完成后拉低ready，等待输出被取走
         end
     end

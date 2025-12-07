@@ -267,8 +267,21 @@ module Data_Buffer
             case (state)
                 SENDING: begin
                     if (!buffer_empty) begin
-                        o_data_out <= buffer_mem[read_addr];
-                        o_data_out_valid <= 1'b1;
+                        // 握手完成后，立即更新到下一个数据
+                        if (output_handshake) begin
+                            if (read_addr == BUFFER_DEPTH - 1) begin
+                                // 最后一个数据，下一周期valid拉低
+                                o_data_out_valid <= 1'b0;
+                            end else begin
+                                // 输出下一个数据
+                                o_data_out <= buffer_mem[read_addr + 1'b1];
+                                o_data_out_valid <= 1'b1;
+                            end
+                        end else begin
+                            // 保持当前数据
+                            o_data_out <= buffer_mem[read_addr];
+                            o_data_out_valid <= 1'b1;
+                        end
                     end else begin
                         o_data_out_valid <= 1'b0;
                     end

@@ -39,7 +39,7 @@ module tb_calc_result();
     end
     
     // DUT实例化
-    caluc_result u_caluc_result(
+    caluc_result u_calc_result(
         .clk(clk),
         .rst_n(rst_n),
         .i_result_data_in(result_data_in),

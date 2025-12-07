@@ -52,7 +52,7 @@ module Control
     output [$clog2(GATE_MIN_SCALE_COEF):0] o_accumulator_cfg_gate,//门控信号
 
     output  o_trunction_cfg_en,
-    output  [$clog2(ACCUMULATOR_OUTWIDTH-D_WIDTH)-1:0] o_trunction_cfg_lsb_idx,
+    output  [$clog2(ACCUMULATOR_OUTWIDTH-D_WIDTH):0] o_trunction_cfg_lsb_idx,
     output  o_trunction_cfg_saturate_en,
     output  o_relu_en,
     output  o_model_finished,
@@ -62,11 +62,8 @@ module Control
     //监听端口
     input i_out_cache_ready,
     input i_out_cache_valid,
-    output o_out_mux_sel, //1的时候这时候输出
+    output o_out_mux_sel //1的时候这时候输出
 
-    //监听数据输入端口
-    input i_din_ready,
-    input i_din_valid
 
     );
 
@@ -114,17 +111,7 @@ module Control
         end
     end
 
-    //layer_counter refresh
-    always @(posedge clk or negedge rst_n)begin
-        if(!rst_n)begin
-            layer_count <= 0;
-        end
-        else begin
-            if( (((prev_state == WAIT_DONE) & (state == FETCH)) | ((prev_state == WAIT_DONE) & (state == FINISH))))begin
-                layer_count <= layer_count + 1;
-            end
-        end
-    end
+    
 
     //DECODE
     reg [1:0] layer_tag;
@@ -138,7 +125,7 @@ module Control
     assign o_accumulator_cfg_channel_innum = layer_innum;
     assign o_accumulator_cfg_gate = $clog2(MAX_OUTPUT_LAYER) - layer_outnum;
     assign o_trunction_cfg_saturate_en = trunc_en;
-    assign o_trunction_cfg_lsb_idx = lsb_trunc_pos;
+    assign o_trunction_cfg_lsb_idx = {1'b0,lsb_trunc_pos};
     assign o_relu_en = relu_en;
     always @(posedge clk)begin
         if((state == ASIC_CONFIG) & (prev_state == FETCH))begin
@@ -185,6 +172,18 @@ module Control
             end
             else begin
                 reconfig_counter <= RECONFIG_PERIOD;
+            end
+        end
+    end
+
+    //layer_counter refresh
+    always @(posedge clk or negedge rst_n)begin
+        if(!rst_n)begin
+            layer_count <= 0;
+        end
+        else begin
+            if( (((prev_state == WAIT_DONE) & (state == FETCH)) | ((prev_state == WAIT_DONE) & (state == FINISH))))begin
+                layer_count <= (layer_tag == 2'b11) ? 0 : (layer_count + 1);
             end
         end
     end

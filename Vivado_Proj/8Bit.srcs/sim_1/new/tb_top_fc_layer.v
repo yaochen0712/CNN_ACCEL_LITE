@@ -24,9 +24,23 @@ module tb_top_fc_layer(
 
     );
 
-    reg clk,r_en,rst_n;
+    reg clk,r_en,rst_n,r_trans_ready;
 // output declaration of module BM_control_stream_v2
     localparam DW = 8;
+
+    wire  [7:0] w_test_bram_data; 
+    wire  [14:0] w_test_bram_addr ;
+    wire  [7:0] w_test_data ;     
+    wire  [7:0] w_fifo_data;
+    wire  [15:0] w_command_data;
+    wire  [2:0] w_layer_idx;
+    wire [8:0] w_accumulator_cfg_channel_inum;
+    wire [3:0] w_accumulator_cfg_gate;
+    wire [4:0] w_trunction_cfg_lsb_idx;
+    wire [7:0] w_fc2cpa_data;
+    wire [1:0] w_layer_index;
+    assign w_layer_index = w_layer_idx[1:0];
+    wire [31:0] w_trans_data;
 
     BM_control_stream_v2 #(
         .WIDTH        	(DW         ),
@@ -35,7 +49,7 @@ module tb_top_fc_layer(
     u_DATA_IN_CTRL(
         .clk              	(clk               ),
         .rst_n            	(rst_n             ),
-        .en               	(r_en                ),
+        .en               	(1'b1                ),
         .o_addr_done      	(w_test_addr_done       ),
         .i_bram_data      	(w_test_bram_data       ),
         .o_bram_addr      	(w_test_bram_addr       ),
@@ -44,20 +58,20 @@ module tb_top_fc_layer(
         .i_data_out_ready 	(w_test_data_ready  )
     );
 
-    Data_buffer #(
+    Data_Buffer #(
         .DATA_WIDTH  	(DW           ),
         .BUFFER_DEPTH	(512        )
     )
     u_Data_Buffer(
-        .clk         	(clk          ),
-        .rst_n       	(rst_n        ),
-        .i_fifo_data 	(w_test_data  ),
-        .i_fifo_valid	(w_test_data_valid  ),
-        .o_fifo_ready	(w_test_data_ready  ),
-        .o_data_out  	(w_fifo_data            ),
-        .o_data_valid	(w_fifo_data_valid            ),
-        .i_data_ready	(w_fifo_data_ready        ),
-        .i_ctrl_enable	(w_n_bram_setaddr_zero        )
+        .clk         	    (clk          ),
+        .rst_n       	    (rst_n        ),
+        .i_data_in  	    (w_test_data  ),
+        .i_data_in_valid	(w_test_data_valid  ),
+        .o_data_in_ready	(w_test_data_ready  ),
+        .o_data_out  	    (w_fifo_data            ),
+        .o_data_out_valid	(w_fifo_data_valid            ),
+        .i_data_out_ready	(w_fifo_data_ready        ),
+        .i_ctrl_enable	    (w_n_bram_setaddr_zero        )
     );
 
 
@@ -94,16 +108,16 @@ module tb_top_fc_layer(
         .o_dp_sel                        	(w_dp_sel                         ),
         .o_layer_idx                     	(w_layer_idx                      ),
         .o_accumulator_cfg_en            	(w_accumulator_cfg_en             ),
-        .o_accumulator_cfg_channel_innum 	(w_accumulator_cfg_channel_innum  ),
+        .o_accumulator_cfg_channel_innum 	(w_accumulator_cfg_channel_inum  ),
         .o_accumulator_cfg_gate          	(w_accumulator_cfg_gate           ),
         .o_trunction_cfg_en              	(w_trunction_cfg_en               ),
         .o_trunction_cfg_lsb_idx         	(w_trunction_cfg_lsb_idx          ),
         .o_trunction_cfg_saturate_en     	(w_trunction_cfg_saturate_en      ),
         .o_relu_en                       	(w_relu_en                        ),
-        .o_model_finished                	(o_model_finished                 ),
+        .o_model_finished                	(w_model_finished                 ),
         .o_n_bram_setaddr_zero           	(w_n_bram_setaddr_zero            ),
-        .i_out_cache_ready               	(w_out_cache_ready                ),
-        .i_out_cache_valid               	(w_out_cache_valid                ),
+        .i_out_cache_ready               	(w_fc2cap_ready                ),
+        .i_out_cache_valid               	(w_fc2cap_valid                ),
         .o_out_mux_sel                   	(w_out_mux_sel                    )
     );
     
@@ -146,17 +160,46 @@ module tb_top_fc_layer(
         .i_accumulator_cfg_channel_inum 	(w_accumulator_cfg_channel_inum  ),
         .i_accumulator_cfg_gate         	(w_accumulator_cfg_gate          ),
         .i_trunction_cfg_en             	(w_trunction_cfg_en              ),
-        .i_trunction_cfg_lsb_index      	(w_trunction_cfg_lsb_index       ),
+        .i_trunction_cfg_lsb_index      	(w_trunction_cfg_lsb_idx       ),
         .i_trunction_cfg_saturate_en    	(w_trunction_cfg_saturate_en     ),
         .i_relu_en                      	(w_relu_en                       ),
         .i_n_bram_setaddr_zero          	(w_n_bram_setaddr_zero           ),
         .i_out_mux_sel                  	(w_out_mux_sel                   ),
-        .i_fc2cap_valid                 	(w_fc2cap_valid                  ),
-        .o_fc2cap_ready                 	(w_fc2cap_ready                  ),
+        .o_fc2cap_valid                 	(w_fc2cap_valid                  ),
+        .i_fc2cap_ready                 	(w_fc2cap_ready                  ),
         .o_fc2cpa_data                  	(w_fc2cpa_data                   )
     );
     
+    calc_result u_result_present(
+        .clk                                (clk),
+        .rst_n                              (rst_n),
+        .i_result_data_in                   (w_fc2cpa_data ),
+        .i_result_data_valid                (w_fc2cap_valid),
+        .o_result_data_ready                (w_fc2cap_ready),
+        .o_trans_data                       (w_trans_data),
+        .o_trans_valid                      (w_trans_valid),
+        .i_trans_ready                      (r_trans_ready)
+    );
+    
 
+    always #5 clk = ~clk;
+    initial begin
+        rst_n = 1;
+        clk = 0;
+        r_en = 0;
+        r_trans_ready = 0;
+        #10 rst_n = 0;
+        #10 rst_n = 1;
+        r_trans_ready = 1;
+
+        wait(w_test_addr_done);
+    end
+
+    initial begin
+        #40000000
+        $display("Time OUT !!!!!\n");
+        $finish;
+    end
 endmodule
 
 

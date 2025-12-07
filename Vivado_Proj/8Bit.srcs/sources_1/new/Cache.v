@@ -43,8 +43,8 @@ module Cache
     // ========== 内部信号 ==========
     localparam CNT_WIDTH = $clog2(CHANNEL);
     
-    reg [CNT_WIDTH-1:0] count_max;          // 最大计数值（有效通道数）
-    reg [CNT_WIDTH-1:0] counter;            // 当前输出计数器
+    reg [CNT_WIDTH:0] count_max;          // 最大计数值（有效通道数）
+    reg [CNT_WIDTH:0] counter;            // 当前输出计数器
     reg [$clog2(GATE_PARA):0] gate_en_reg;        // 门控配置寄存器
     reg [D_WIDTH*CHANNEL-1:0] mem_array;    // 数据存储器
 
@@ -75,7 +75,7 @@ module Cache
         end else if (i_cfg_valid) begin
             // 计算有效通道数 = (CHANNEL / 2^GATE_PARA) * (gate_en + 1) - 1
             // 简化：右移GATE_PARA位，然后左移gate_en位
-            count_max <= ((CHANNEL >> GATE_PARA) << i_cfg_gate_en) - 1;
+            count_max <= ((CHANNEL >> GATE_PARA) << (GATE_PARA - i_cfg_gate_en)) - 1;
         end
     end
 
@@ -156,15 +156,17 @@ module Cache
             endcase
         end 
     end
-
+    reg [CNT_WIDTH:0] counter_mvalue;
     // ========== 计数器更新逻辑 ==========
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             counter <= {CNT_WIDTH{1'b0}};
+            counter_mvalue <= {CNT_WIDTH{1'b0}};
         end else begin
             if (input_handshake) begin
                 // 输入握手成功，加载最大计数值
                 counter <= count_max;
+                counter_mvalue <= count_max;
             end else if (output_handshake && (counter != 0)) begin
                 // 输出握手成功且未到0，递减
                 counter <= counter - 1'b1;
@@ -183,7 +185,7 @@ module Cache
 
     // ========== 串行数据输出 ==========
     // 从低位通道开始输出 (counter从count_max递减到0)
-    assign o_data_serial = mem_array[D_WIDTH*(count_max-counter) +: D_WIDTH];
+    assign o_data_serial = mem_array[D_WIDTH*(counter_mvalue-counter) +: D_WIDTH];
 
     // ========== 状态标志 ==========
     always @(posedge clk or negedge rst_n) begin

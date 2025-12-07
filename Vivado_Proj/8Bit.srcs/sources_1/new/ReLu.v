@@ -54,7 +54,7 @@ module ReLU #(
     
     assign input_fire = i_data_in_valid && ready_reg;
     assign output_fire = o_data_out_valid && o_data_out_ready;
-    assign i_data_in_ready = ready_reg;
+    assign i_data_in_ready = o_data_out_ready;
     //配置
     reg relu_en_reg;
     always @(posedge clk) begin

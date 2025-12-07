@@ -49,15 +49,15 @@ module top_fc_module
     input [$clog2(INPUT_CHANNEL_MAXNUM)-1:0] i_accumulator_cfg_channel_inum,//累加器需要加多少次 对应多少个输入通道
     input [$clog2(GATE_PARA):0] i_accumulator_cfg_gate,//门控，同时控制输出的数量
     input i_trunction_cfg_en,
-    input [$clog2(ACCUMULATOR_OUTWIDTH-D_WIDTH)-1:0] i_trunction_cfg_lsb_index,
+    input [$clog2(ACCUMULATOR_OUTWIDTH-D_WIDTH):0] i_trunction_cfg_lsb_index,
     input i_trunction_cfg_saturate_en,
     input i_relu_en,
     input i_n_bram_setaddr_zero, //用于把控制器重置为0开始 方便下一次计算 正常使用的时候拉高 实现方法是和rst_n做and
 
     //Capture送给AXI_DMA的接口与MUX控制
     input i_out_mux_sel,
-    input i_fc2cap_valid,
-    output o_fc2cap_ready,
+    output o_fc2cap_valid,
+    input i_fc2cap_ready,
     output [D_WIDTH-1:0]o_fc2cpa_data
     );
 
@@ -89,7 +89,7 @@ module top_fc_module
     wire w_weight_l3_valid;
     wire w_weight_l3_ready;
 
-    BUS_MUX #(
+    BUS_MUX_B #(
         .D_WIDTH(WEIGHT_BUS_DWIDTH)
     ) 
     u_WEIGHT_L1_BUS_MUX_0
@@ -106,7 +106,7 @@ module top_fc_module
         .sel       	(i_layer_index[1]        )
     );
     
-    BUS_MUX #(
+    BUS_MUX_B #(
         .D_WIDTH 	(WEIGHT_BUS_DWIDTH  )
     )
     u_WEIGHT_L2_BUS_MUX_0
@@ -123,7 +123,7 @@ module top_fc_module
         .sel       	(i_layer_index[0]       )
     );
     
-    BUS_MUX #(
+    BUS_MUX_B #(
         .D_WIDTH 	(WEIGHT_BUS_DWIDTH  )
     )
     u_WEIGHT_L2_BUS_MUX_1
@@ -135,8 +135,8 @@ module top_fc_module
         .valid_b_0 	(w_weight_l3_valid  ),
         .ready_b_0 	(w_weight_l3_ready  ),
         .data_b_1  	({WEIGHT_BUS_DWIDTH{1'b0}}   ),
-        .valid_b_1 	(w_weight_l3_valid  ),
-        .ready_b_1 	(1'b0  ),
+        .valid_b_1 	(1'b0  ),
+        .ready_b_1 	( ),
         .sel       	(i_layer_index[0]        )
     );
     
@@ -145,7 +145,7 @@ module top_fc_module
     wire [$clog2(DEPTH_LAYER1)-1:0] w_l1_weight_brctrl_addr;
     // wire w_l1_weight_brctrl_en;
     wire w_l1_bram_done;
-    BM_control_stream_v2 #(
+    BM_control_stream_v2_V #(
         .WIDTH    (WEIGHT_LAYER1_DWIDTH),
         .ADDR_RANGE    (DEPTH_LAYER1)
     )
@@ -177,7 +177,7 @@ module top_fc_module
     wire [$clog2(DEPTH_LAYER2)-1:0] w_l2_weight_brctrl_addr;
     // wire w_l2_weight_brctrl_en;
     wire w_l2_bram_done;
-    BM_control_stream_v2 #(
+    BM_control_stream_v2_V #(
         .WIDTH    (WEIGHT_LAYER2_DWIDTH),
         .ADDR_RANGE    (DEPTH_LAYER2)
     )
@@ -208,7 +208,7 @@ module top_fc_module
     wire [$clog2(DEPTH_LAYER3)-1:0] w_l3_weight_brctrl_addr;
     // wire w_l3_weight_brctrl_en;
     wire w_l3_bram_done;
-    BM_control_stream_v2 #(
+    BM_control_stream_v2_V #(
         .WIDTH    (WEIGHT_LAYER3_DWIDTH),
         .ADDR_RANGE    (DEPTH_LAYER3)
     )
@@ -243,7 +243,7 @@ module top_fc_module
     wire w_dpmux_multi_valid;
     wire w_dpmux_multi_ready;
     
-    BUS_MUX #(
+    BUS_MUX_B #(
         .D_WIDTH 	(D_WIDTH  ))
     u_BUS_MUX(
         .data_a    	(w_dpmux_multi_data    ),
@@ -255,7 +255,7 @@ module top_fc_module
         .data_b_1  	(i_fifo_data   ),
         .valid_b_1 	(i_fifo_valid  ),
         .ready_b_1 	(o_fifo_ready ),
-        .sel       	(i_dp_selsel        )
+        .sel       	(i_dp_sel        )
     );
     
     //乘法器模块例化
@@ -270,7 +270,7 @@ module top_fc_module
         .NUM_MULTS  	(MULTI_WIDTH   ),        
         .DIN_WIDTH  	(D_WIDTH       ),      
         .WGT_WIDTH  	(D_WIDTH       ),
-        .DOUT_WIDTH 	(ACCUMULATOR_OUTWIDTH            ),
+        .DOUT_WIDTH 	(16            ),
         .LATENCY    	(3             ),
         .GATE_PARA  	(GATE_PARA     )
     )
@@ -281,9 +281,9 @@ module top_fc_module
         .i_bram_data_din     	(w_multi_data      ),
         .i_bram_data_valid   	(w_dpmux_multi_valid    ),
         .o_bram_data_ready   	(w_dpmux_multi_ready    ),
-        .i_bram_weight_din   	(w_weight_l1_data    ),
-        .i_bram_weight_valid 	(w_weight_l1_valid  ),
-        .o_bram_weight_ready 	(w_weight_l1_ready  ),
+        .i_bram_weight_din   	(w_l1mux_multi_data    ),
+        .i_bram_weight_valid 	(w_l1mux_multi_valid  ),
+        .o_bram_weight_ready 	(w_l1mux_multi_ready  ),
         .o_data_out          	(w_multi_accum_data           ),
         .o_data_out_valid    	(w_multi_accum_valid     ),
         .i_data_out_ready    	(w_multi_accum_ready     ),
@@ -300,11 +300,11 @@ module top_fc_module
     wire w_bmctrl_accum_ready;
     wire w_bias_bram_done;
 
-    BM_control_stream_v2 #(
+    BM_control_stream_v2_V #(
         .WIDTH        	(D_WIDTH*MAX_OUTPUT_LAYER         ),
         .ADDR_RANGE   	(MAX_LAYER       )
         )
-    u_BM_control_stream_v2(
+    u_BM_BIAS_CTRL(
         .clk              	(clk               ),
         .rst_n            	((rst_n & i_n_bram_setaddr_zero)             ),
         .en               	(i_ctrl_start                ),
@@ -366,13 +366,13 @@ module top_fc_module
     u_top_multi_relu_trunc(
         .clk                         	(clk                          ),
         .rst_n                       	(rst_n                        ),
-        .i_data_in                   	(w_accum_trunc_data                    ),
+        .i_data_in                   	(w_accum_trunc_data               ),
         .i_data_in_valid             	(w_accum_trunc_valid              ),
         .o_data_in_ready             	(w_accum_trunc_ready              ),
-        .o_data_out                  	(w_trunc_cache_data                   ),
+        .o_data_out                  	(w_trunc_cache_data               ),
         .o_data_out_valid            	(w_trunc_cache_valid             ),
         .i_data_out_ready            	(w_trunc_cache_ready             ),
-        .i_cfg_en                    	(i_cfg_en                     ),
+        .i_cfg_en                    	(i_trunction_cfg_en              ),
         .i_trunction_cfg_lsb_index   	(i_trunction_cfg_lsb_index    ),
         .i_trunction_cfg_saturate_en 	(i_trunction_cfg_saturate_en  ),
         .i_relu_en                   	(i_relu_en                    )
@@ -410,7 +410,7 @@ module top_fc_module
         .o_mem_empty           	(o_mem_empty            )
     );
 
-    BUS_MUX #(
+    BUS_MUX_A #(
         .D_WIDTH 	(D_WIDTH  ))
     u_BUS_OUTMUX(
         .data_a    	(w_outmux_cache_data     ),
@@ -420,29 +420,73 @@ module top_fc_module
         .valid_b_0 	(w_dpmux_cache_valid  ),
         .ready_b_0 	(w_dpmux_cache_ready  ),
         .data_b_1  	(o_fc2cpa_data   ),
-        .valid_b_1 	(i_fc2cap_valid  ),
-        .ready_b_1 	(o_fc2cap_ready  ),
+        .valid_b_1 	(o_fc2cap_valid  ),
+        .ready_b_1 	(i_fc2cap_ready  ),
         .sel       	(i_out_mux_sel   )
     );
     
 
+    // //layer_done逻辑
+    // reg reg_layer_done = 0;
+    // assign o_fc_layerdone = reg_layer_done;
+    // localparam layerdone_high_period = 4;
+    // reg [3:0] counter_layerdone = 0;
+    // reg r_mem_full = 0;
+    // reg r_mem_full_d = 0;
+    // assign pos_memfull = (~r_mem_full_d) & r_mem_full;
+
+    // always @(posedge clk or posedge o_mem_full)begin
+    //     counter_layerdone <= (counter_layerdone == 0) ? 0 : (counter_layerdone - 1);
+    //     if(pos_memfull == 1)begin
+    //         counter_layerdone <= layerdone_high_period;
+    //     end
+    // end
+    // always @(posedge clk)begin
+    //         reg_layer_done =(counter_layerdone == 2) ? 1 : 0;
+        
+    // end
+    
     //layer_done逻辑
     reg reg_layer_done = 0;
     assign o_fc_layerdone = reg_layer_done;
     localparam layerdone_high_period = 4;
     reg [3:0] counter_layerdone = 0;
-    always @(posedge clk or posedge o_mem_full)begin
-        counter_layerdone <= (counter_layerdone == 0) ? 0 : (counter_layerdone - 1);
-        if(o_mem_full == 1)begin
-            counter_layerdone <= layerdone_high_period;
+    reg r_mem_full = 0;
+    reg r_mem_full_d = 0;
+    wire pos_memfull;
+    assign pos_memfull = (~r_mem_full_d) & r_mem_full;
+
+    // 先对 o_mem_full 进行打拍，检测上升沿
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            r_mem_full <= 0;
+            r_mem_full_d <= 0;
+        end else begin
+            r_mem_full <= o_mem_full;
+            r_mem_full_d <= r_mem_full;
         end
-    end
-    always @(posedge clk)begin
-        if(o_mem_full == 1)begin
-            reg_layer_done =(counter_layerdone == 0) ? 0 : 1;
-        end
-        
     end
 
+    // 计数器逻辑
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            counter_layerdone <= 0;
+        end else begin
+            if (pos_memfull) begin
+                counter_layerdone <= layerdone_high_period;
+            end else if (counter_layerdone > 0) begin
+                counter_layerdone <= counter_layerdone - 1;
+            end
+        end
+    end
+
+    // layer_done 信号生成
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            reg_layer_done <= 0;
+        end else begin
+            reg_layer_done <= (counter_layerdone == 2) ? 1'b1 : 1'b0;
+        end
+    end
 
 endmodule

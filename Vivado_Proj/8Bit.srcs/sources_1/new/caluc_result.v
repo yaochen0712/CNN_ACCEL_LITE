@@ -8,7 +8,7 @@
 //              - 用途：将FC层的两个分类结果比较后，格式化输出给Cap2DMA模块
 //////////////////////////////////////////////////////////////////////////////////
 
-module caluc_result(
+module calc_result(
     input clk,
     input rst_n,
 

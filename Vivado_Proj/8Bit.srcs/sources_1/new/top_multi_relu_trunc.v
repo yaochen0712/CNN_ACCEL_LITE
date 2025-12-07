@@ -19,7 +19,7 @@ module top_multi_relu_trunc#(
 
     //接口配置
     input i_cfg_en,
-    input [$clog2(D_IWIDTH-D_OWIDTH)-1:0] i_trunction_cfg_lsb_index,
+    input [$clog2(D_IWIDTH-D_OWIDTH):0] i_trunction_cfg_lsb_index,
     input i_trunction_cfg_saturate_en,
     input i_relu_en
 );

@@ -20,7 +20,7 @@ module tb_top_truncrelu();
     
     // 配置信号
     reg i_cfg_en;
-    reg [$clog2(D_IWIDTH-D_OWIDTH)-1:0] i_trunction_cfg_lsb_index;
+    reg [$clog2(D_IWIDTH-D_OWIDTH):0] i_trunction_cfg_lsb_index;
     reg i_trunction_cfg_saturate_en;
     reg i_relu_en;
     
